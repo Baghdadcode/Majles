@@ -9,9 +9,11 @@ import { saveSession, seatWins, seedDefaults, upsertBrief } from "../db/store";
 import { ClaudeProvider, checkApiKey } from "../providers/claude";
 import { getCouncil } from "../seats/councils";
 import { CHAIRMAN } from "../seats/definitions";
-import type { SeatDef, VotingMode } from "../core/types";
+import type { CallResult, CouncilProvider, SeatDef, VotingMode } from "../core/types";
+import { FakeProvider } from "../providers/fake";
 import { parseQuestions, selectQuestions, stripChairmanPreamble } from "./questions";
-import { loadEnv } from "../config/env";
+import { getDbPath, loadEnv } from "../config/env";
+import type { SessionEvent } from "../core/orchestrator";
 
 interface Args {
   file: string;
@@ -72,6 +74,23 @@ function estimateCost(questions: number, seats: number, mode: VotingMode, briefC
   return questions * (answers + ranks + chair + baseline + brief);
 }
 
+let finished = false;
+const step = (msg: string) => console.log(`- ${msg}...`);
+
+/** Progress for long runs; text deltas are skipped to keep the terminal readable. */
+function logEvent(e: SessionEvent): void {
+  if (e.type === "state") console.log(`    ${e.state}`);
+  else if (e.type === "answer_done") console.log(`      answered: ${e.seatId}`);
+  else if (e.type === "answer_failed") console.log(`      FAILED to answer: ${e.seatId}: ${e.error}`);
+  else if (e.type === "ranking_done") console.log(`      ranked: ${e.reviewerId}`);
+  else if (e.type === "ranking_failed") console.log(`      FAILED to rank: ${e.reviewerId}: ${e.error}`);
+}
+
+// Make an early exit impossible to miss (an empty event loop ends Node silently with work still pending).
+process.on("exit", (code) => {
+  if (!finished) console.error(`\nCouncil eval stopped before finishing (exit code ${code}).`);
+});
+
 async function main() {
   loadEnv();
   const args = parseArgs(process.argv.slice(2));
@@ -88,8 +107,23 @@ async function main() {
   );
   if (args.dryRun) return;
 
-  await checkApiKey();
-  const provider = new ClaudeProvider();
+  // COUNCIL_FAKE=1 runs the whole CLI against the offline fake provider (no key, no cost), for debugging.
+  const fake = process.env.COUNCIL_FAKE === "1";
+  let provider: CouncilProvider;
+  let baseline: (question: string, seat: SeatDef, brief?: string) => Promise<CallResult<string>>;
+  if (fake) {
+    step("Using the offline fake provider (COUNCIL_FAKE=1)");
+    const f = new FakeProvider();
+    provider = f;
+    baseline = (question, seat, b) => f.answer({ seat, question, brief: b });
+  } else {
+    step("Checking API key");
+    await checkApiKey();
+    const claude = new ClaudeProvider();
+    provider = claude;
+    baseline = (question, seat, b) => claude.baseline(question, seat, b);
+  }
+  step(`Opening database ${getDbPath()}`);
   const db = openDb();
   seedDefaults(db);
 
@@ -117,17 +151,20 @@ async function main() {
   }[] = [];
 
   for (const [i, q] of questions.entries()) {
-    process.stdout.write(`[${i + 1}/${questions.length}] ${q.title} ... `);
+    console.log(`[${i + 1}/${questions.length}] ${q.title}`);
     const createdAt = new Date();
     const [session, base] = await Promise.all([
-      runSession({ question: q.text, brief: brief?.content, seats: council.seats, mode: args.mode }, provider),
-      provider.baseline(q.text, baselineSeat, brief?.content),
+      runSession(
+        { question: q.text, brief: brief?.content, seats: council.seats, mode: args.mode, onEvent: logEvent },
+        provider,
+      ),
+      baseline(q.text, baselineSeat, brief?.content),
     ]);
     const sessionId = saveSession(db, { question: q.text, council, brief, result: session, createdAt });
     const baselineCost = sumCost(base.usage);
     const councilIsResponse = (randomInt(2) + 1) as 1 | 2;
     rows.push({ title: q.title, session, baseline: base.value, baselineCost, sessionId, councilIsResponse });
-    console.log(`${session.state} ${formatUsd(session.totalCostUsd + baselineCost)}`);
+    console.log(`  -> ${session.state}${session.error ? `: ${session.error}` : ""} (${formatUsd(session.totalCostUsd + baselineCost)})`);
   }
 
   // Blind comparison: Response 1 / 2 in random order; the key lives in a separate file.
@@ -192,7 +229,12 @@ async function main() {
   console.log(`\n${summary}\nWrote ${outDir}/ (blind-comparison.md, answer-key.json, summary.md, sessions.json)`);
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    finished = true;
+  })
+  .catch((err) => {
+    finished = true;
+    console.error(err instanceof Error ? err.stack ?? err.message : err);
+    process.exit(1);
+  });
