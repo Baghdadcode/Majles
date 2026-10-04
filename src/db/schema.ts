@@ -69,6 +69,8 @@ export const answers = sqliteTable("answers", {
   sessionId: text("session_id").notNull(),
   advisorId: text("advisor_id").notNull(),
   advisorVersion: integer("advisor_version").notNull(),
+  /** Neutral label the chairman saw (A, B, ...). Null for failed answers. */
+  label: text("label"),
   text: text("text"),
   status: text("status").notNull(), // ok | failed
   error: text("error"),
@@ -78,6 +80,8 @@ export const rankings = sqliteTable("rankings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   sessionId: text("session_id").notNull(),
   reviewerAdvisorId: text("reviewer_advisor_id").notNull(),
+  /** "Reviewer N" as the chairman saw it. */
+  reviewerLabel: text("reviewer_label").notNull().default(""),
   answerId: text("answer_id").notNull(),
   label: text("label").notNull(),
   rank: integer("rank").notNull(),
