@@ -3,7 +3,7 @@ import { basename, extname, join } from "node:path";
 import { randomInt } from "node:crypto";
 import { formatUsd, sumCost } from "../core/cost";
 import { runSession, type SessionResult } from "../core/orchestrator";
-import { PRICING } from "../config/models";
+import { estimateSessionCost } from "../core/estimate";
 import { openDb } from "../db/client";
 import { saveSession, seatWins, seedDefaults, upsertBrief } from "../db/store";
 import { ClaudeProvider, checkApiKey } from "../providers/claude";
@@ -55,25 +55,6 @@ function parseArgs(argv: string[]): Args {
   return args;
 }
 
-/**
- * Rough pre-run estimate: typical tokens per call, not measured. The brief (about 4 characters per token) is
- * priced as a cache write on the parallel answer and baseline calls and as a cache read on the later calls.
- * Includes the single-answer baseline.
- */
-function estimateCost(questions: number, seats: number, mode: VotingMode, briefChars = 0): number {
-  const p = PRICING["claude-opus-5-5"];
-  const call = (inTok: number, outTok: number) => (inTok * p.inputPerMTok + outTok * p.outputPerMTok) / 1e6;
-  const briefTok = Math.ceil(briefChars / 4);
-  const firstWave = seats + 1; // answers + baseline, sent together
-  const laterCalls = (mode === "full" ? seats : 0) + 1; // rankings + chairman
-  const brief = (briefTok * (firstWave * p.cacheWritePerMTok + laterCalls * p.cacheReadPerMTok)) / 1e6;
-  const answers = seats * call(1_500, 4_000);
-  const ranks = mode === "full" ? seats * call(5_000, 3_000) : 0;
-  const chair = call(mode === "full" ? 9_000 : 6_000, 6_000);
-  const baseline = call(1_000, 4_000);
-  return questions * (answers + ranks + chair + baseline + brief);
-}
-
 let finished = false;
 const step = (msg: string) => console.log(`- ${msg}...`);
 
@@ -100,7 +81,16 @@ async function main() {
 
   console.log(`Council "${council.name}" (${council.seats.map((s) => s.name).join(", ")}), mode: ${args.mode}`);
   const briefChars = args.briefPath ? readFileSync(args.briefPath, "utf8").length : 0;
-  const estimate = estimateCost(questions.length, council.seats.length, args.mode, briefChars);
+  const estimate =
+    questions.length *
+    estimateSessionCost({
+      seats: council.seats,
+      chairman: CHAIRMAN,
+      mode: args.mode,
+      briefChars,
+      questionChars: questions.reduce((n, q) => n + q.text.length, 0) / questions.length,
+      includeBaseline: true,
+    });
   console.log(
     `${questions.length} question(s). Rough estimate: ${formatUsd(estimate)} including the single-answer baseline` +
       (args.briefPath ? ` and the brief (~${Math.ceil(briefChars / 4)} tokens per call).` : "."),

@@ -21,9 +21,25 @@ export type SessionEvent =
   | { type: "answer_delta"; seatId: string; text: string }
   | { type: "answer_done"; seatId: string }
   | { type: "answer_failed"; seatId: string; error: string }
-  | { type: "ranking_done"; reviewerId: string }
+  | { type: "labels"; labels: { label: string; seatId: string }[] }
+  | {
+      type: "ranking_done";
+      reviewerId: string;
+      reviewerLabel: string;
+      items: { answerSeatId: string; rank: number; reasoning: string }[];
+    }
   | { type: "ranking_failed"; reviewerId: string; error: string }
+  | { type: "tally"; tally: TallyEvent }
+  | { type: "cost"; totalUsd: number }
   | { type: "verdict_delta"; text: string };
+
+export interface TallyEvent {
+  entries: { seatId: string; points: number; maxPossible: number; fraction: number }[];
+  winnerSeatId: string | null;
+  marginFraction: number;
+  closeRace: boolean;
+  tie: boolean;
+}
 
 export interface SessionInput {
   question: string;
@@ -43,6 +59,8 @@ export interface SeatAnswer {
 
 export interface SeatRanking {
   reviewerId: string;
+  /** "Reviewer N" as the chairman saw it (numbered in the order rankings came back). */
+  reviewerLabel: string;
   /** Items in the reviewer's own labels, plus the canonical answer each label pointed to. */
   items: (ReviewItem & { answerId: string })[];
 }
@@ -54,6 +72,8 @@ export interface SessionResult {
   effectiveMode: VotingMode;
   error?: string;
   answers: SeatAnswer[];
+  /** Neutral label (A, B, ...) the chairman saw for each answer id. */
+  labels: Record<string, string>;
   failedSeats: { seatId: string; stage: "answer" | "rank"; error: string }[];
   rankings: SeatRanking[];
   tally?: Tally;
@@ -73,10 +93,15 @@ export async function runSession(input: SessionInput, provider: CouncilProvider)
     mode: input.mode,
     effectiveMode: input.mode,
     answers: [],
+    labels: {},
     failedSeats,
     rankings: [],
     usage,
     totalCostUsd: 0,
+  };
+  const record = (u: UsageRecord[]) => {
+    usage.push(...u);
+    emit({ type: "cost", totalUsd: sumCost(usage) });
   };
   const finish = (state: "done" | "failed", error?: string): SessionResult => {
     result.state = state;
@@ -98,7 +123,7 @@ export async function runSession(input: SessionInput, provider: CouncilProvider)
             brief: input.brief,
             onText: (text) => emit({ type: "answer_delta", seatId: seat.id, text }),
           });
-          usage.push(...r.usage);
+          record(r.usage);
           emit({ type: "answer_done", seatId: seat.id });
           return { seat, text: r.value };
         } catch (err) {
@@ -129,6 +154,9 @@ export async function runSession(input: SessionInput, provider: CouncilProvider)
     const canonical = answers.map((a, i) => ({ ...a, label: LABELS[i]! }));
     const canonicalLabel = new Map(canonical.map((a) => [a.answerId, a.label]));
     const chairAnswers: LabeledAnswer[] = canonical.map((a) => ({ label: a.label, text: a.text }));
+    result.labels = Object.fromEntries(canonical.map((a) => [a.answerId, a.label]));
+    emit({ type: "labels", labels: canonical.map((a) => ({ label: a.label, seatId: a.seatId })) });
+    const seatOfAnswer = new Map(answers.map((a) => [a.answerId, a.seatId]));
 
     let tally: Tally | undefined;
     let reviewsForChair: { reviewer: string; items: ReviewItem[] }[] = [];
@@ -149,13 +177,17 @@ export async function runSession(input: SessionInput, provider: CouncilProvider)
               brief: input.brief,
               answers: anon.presented.map((p) => ({ label: p.label, text: p.text })),
             });
-            usage.push(...r.usage);
+            record(r.usage);
             reviews.push(toReview(reviewer.id, r.value.items, anon.labelToAnswerId));
-            result.rankings.push({
+            const reviewerLabel = `Reviewer ${result.rankings.length + 1}`;
+            const items = r.value.items.map((i) => ({ ...i, answerId: anon.labelToAnswerId.get(i.label)! }));
+            result.rankings.push({ reviewerId: reviewer.id, reviewerLabel, items });
+            emit({
+              type: "ranking_done",
               reviewerId: reviewer.id,
-              items: r.value.items.map((i) => ({ ...i, answerId: anon.labelToAnswerId.get(i.label)! })),
+              reviewerLabel,
+              items: items.map((i) => ({ answerSeatId: seatOfAnswer.get(i.answerId)!, rank: i.rank, reasoning: i.reasoning })),
             });
-            emit({ type: "ranking_done", reviewerId: reviewer.id });
           } catch (err) {
             const error = errorMessage(err);
             failedSeats.push({ seatId: reviewer.id, stage: "rank", error });
@@ -176,8 +208,23 @@ export async function runSession(input: SessionInput, provider: CouncilProvider)
         result.tally = tally;
         result.winnerSeatId = tally.winnerId ? answers.find((a) => a.answerId === tally!.winnerId)?.seatId : null;
         // Present each reviewer to the chairman neutrally, translated to the canonical answer labels.
-        reviewsForChair = result.rankings.map((r, idx) => ({
-          reviewer: `Reviewer ${idx + 1}`,
+        emit({
+          type: "tally",
+          tally: {
+            entries: tally.entries.map((e) => ({
+              seatId: seatOfAnswer.get(e.answerId)!,
+              points: e.points,
+              maxPossible: e.maxPossible,
+              fraction: e.fraction,
+            })),
+            winnerSeatId: result.winnerSeatId ?? null,
+            marginFraction: tally.marginFraction,
+            closeRace: tally.closeRace,
+            tie: tally.tie,
+          },
+        });
+        reviewsForChair = result.rankings.map((r) => ({
+          reviewer: r.reviewerLabel,
           items: r.items
             .map((i) => ({ ...i, label: canonicalLabel.get(i.answerId)! }))
             .sort((a, b) => a.rank - b.rank),
@@ -210,7 +257,7 @@ export async function runSession(input: SessionInput, provider: CouncilProvider)
       tally: tallyView,
       onText: (text) => emit({ type: "verdict_delta", text }),
     });
-    usage.push(...verdict.usage);
+    record(verdict.usage);
     result.verdict = verdict.value;
     return finish("done");
   } catch (err) {
