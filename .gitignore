@@ -9,3 +9,8 @@ eval-out/
 questions.md
 *.log
 coverage/
+.next/
+next-env.d.ts
+test-results/
+playwright-report/
+*.tsbuildinfo

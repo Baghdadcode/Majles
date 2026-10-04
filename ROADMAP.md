@@ -65,16 +65,30 @@ SQLite via Drizzle. No auth, hosting or job queue.
 - [x] **Gate:** skipped by your decision (2026-10-04) to avoid spending on the full 30-question eval. Judge the council
       through real use in Phase 1 instead. `npm run council:eval` stays available, e.g. `--limit 10` (~$6.50).
 
-## Phase 1 — MVP dashboard (not started)
+## Phase 1 — MVP dashboard (branch `claude/phase-1-dashboard`)
 
-- [ ] Next.js + Tailwind shell; startup key check (Models API call) with a clear Console-key error
-- [ ] Question box: council picker, optional brief, voting mode
-- [ ] Live per-seat columns over server-sent events
-- [ ] Vote matrix (reviewers × answers, Borda totals, winner, close-race badge)
-- [ ] Verdict card with minority report
-- [ ] Cost per session + estimate before running
-- [ ] Session history; brief editor (Stronghold TD first); brief's last-edited date shown in each session
-- [ ] Gate: you use it for a week
+- [x] Next.js 16 (App Router) + Tailwind 4 shell; `npm run dev`
+- [x] Startup key check (one Models API call, from `instrumentation.ts` and on page load) with a clear
+      Console-key error banner; running is blocked until the key works
+- [x] Question box: council picker, optional brief, voting mode (Full vote / Chairman decides); Ctrl+Enter runs
+- [x] Live per-seat columns streamed over server-sent events (`/api/sessions/:id/events`), with stage stepper
+- [x] Vote matrix: reviewers × answers, rank and points per cell (hover for the reviewer's reason), Borda totals,
+      winner, close-race and tie badges, failed reviewers
+- [x] Verdict card with the minority report split out, plus a key for "Answer C" / "Reviewer 2"
+- [x] Cost per session (live running total, final cost and cache reads) and an estimate before running
+- [x] Session history page; recent sessions on the Ask page
+- [x] Brief editor (Stronghold TD seeded from `stronghold-td.md`); each session shows the brief's last-edited date
+- [x] Browser tests in offline fake mode (`npm run test:e2e`, Playwright) and unit tests for the new pieces
+- [ ] **Gate — needs you:** use it for a week of real questions
+
+Phase 1 defaults:
+- **Runs live in the dev server process.** A session runs in the background and streams to the browser; it is
+  saved to SQLite when it finishes. Closing the tab is fine (reopen it from History); restarting `npm run dev`
+  mid-run loses that run.
+- **Seat names are shown in the UI** (you own the data); the chairman and reviewers still work blind.
+- **`COUNCIL_FAKE=1 npm run dev`** runs the whole app offline with canned answers and a separate
+  `data/council-fake.db`, for trying the UI without spending anything.
+- **SSE over a GET endpoint** that replays the run so far, so a refresh mid-run picks up where it was.
 
 ## Phase 2 — custom councils (not started)
 

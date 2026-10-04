@@ -28,7 +28,11 @@ export interface FakeProviderOptions {
   failRankFor?: string[];
   /** Seat id -> preference order of seat ids (best first) that its reviewer will rank. */
   preferences?: Record<string, string[]>;
+  /** Milliseconds between streamed chunks, to exercise live UIs. 0 (default) streams instantly. */
+  chunkDelayMs?: number;
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Deterministic provider for tests; never touches the network. */
 export class FakeProvider implements CouncilProvider {
@@ -45,8 +49,18 @@ export class FakeProvider implements CouncilProvider {
     this.seen.answer.push(req);
     if (this.opts.failAnswerFor?.includes(req.seat.id)) throw new Error(`fake failure: ${req.seat.id}`);
     const text = `## Verdict\nAnswer from ${req.seat.id}.\n## Reasoning\nSeat ${req.seat.id} reasons here.\n## Risks\nNone.\n## Confidence\n70`;
-    req.onText?.(text);
+    await this.stream(text, req.onText);
     return { value: text, usage: usage("answer", req.seat.id) };
+  }
+
+  private async stream(text: string, onText?: (delta: string) => void): Promise<void> {
+    const delay = this.opts.chunkDelayMs ?? 0;
+    if (!onText) return;
+    if (delay === 0) return onText(text);
+    for (const word of text.split(/(?<=\s)/)) {
+      onText(word);
+      await sleep(delay);
+    }
   }
 
   async rank(req: RankRequest): Promise<CallResult<RankingOutput>> {
@@ -79,8 +93,8 @@ export class FakeProvider implements CouncilProvider {
   async synthesize(req: SynthesizeRequest): Promise<CallResult<string>> {
     this.calls.synthesize++;
     this.seen.synthesize.push(req);
-    const text = `## Verdict\nFinal (${req.mode}).`;
-    req.onText?.(text);
+    const text = `## Verdict\nFinal (${req.mode}).\n\n## Why\nThe fake council agreed.\n\n## Minority report\nAnswer B disagreed.`;
+    await this.stream(text, req.onText);
     return { value: text, usage: usage("synthesize", req.chairman.id) };
   }
 }

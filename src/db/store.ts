@@ -63,10 +63,17 @@ export async function upsertBrief(
 
 export async function saveSession(
   db: CouncilDb,
-  args: { question: string; council: CouncilDef; brief?: SessionBrief; result: SessionResult; createdAt: Date },
+  args: {
+    id?: string;
+    question: string;
+    council: CouncilDef;
+    brief?: SessionBrief;
+    result: SessionResult;
+    createdAt: Date;
+  },
 ): Promise<string> {
   const { question, council, brief, result } = args;
-  const sessionId = randomUUID();
+  const sessionId = args.id ?? randomUUID();
   const answerRowId = new Map<string, string>(result.answers.map((a) => [a.answerId, `${sessionId}:${a.answerId}`]));
 
   await db.transaction(async (tx) => {
@@ -95,7 +102,15 @@ export async function saveSession(
       const seat = council.seats.find((s) => s.id === a.seatId)!;
       const id = answerRowId.get(a.answerId)!;
       await tx.insert(t.answers)
-        .values({ id, sessionId, advisorId: seat.id, advisorVersion: seat.version, text: a.text, status: "ok" })
+        .values({
+          id,
+          sessionId,
+          advisorId: seat.id,
+          advisorVersion: seat.version,
+          label: result.labels[a.answerId] ?? null,
+          text: a.text,
+          status: "ok",
+        })
         .run();
     }
     for (const f of result.failedSeats.filter((x) => x.stage === "answer")) {
@@ -118,6 +133,7 @@ export async function saveSession(
           .values({
             sessionId,
             reviewerAdvisorId: r.reviewerId,
+            reviewerLabel: r.reviewerLabel,
             answerId: answerRowId.get(i.answerId)!,
             label: i.label,
             rank: i.rank,
