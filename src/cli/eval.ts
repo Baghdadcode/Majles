@@ -11,7 +11,7 @@ import { getCouncil } from "../seats/councils";
 import { CHAIRMAN } from "../seats/definitions";
 import type { CallResult, CouncilProvider, SeatDef, VotingMode } from "../core/types";
 import { FakeProvider } from "../providers/fake";
-import { parseQuestions, selectQuestions, stripChairmanPreamble } from "./questions";
+import { blindVerdict, parseQuestions, selectQuestions } from "./questions";
 import { getDbPath, loadEnv } from "../config/env";
 import type { SessionEvent } from "../core/orchestrator";
 
@@ -172,7 +172,7 @@ async function main() {
   // Blind comparison: Response 1 / 2 in random order; the key lives in a separate file.
   const blind = rows
     .map((r, i) => {
-      const verdict = stripChairmanPreamble(r.session.verdict ?? "(no verdict: session failed)");
+      const verdict = blindVerdict(r.session.verdict ?? "(no verdict: session failed)");
       const [one, two] = r.councilIsResponse === 1 ? [verdict, r.baseline] : [r.baseline, verdict];
       return `# Question ${i + 1}: ${r.title}\n\n${questions[i]!.text}\n\n## Response 1\n\n${one}\n\n## Response 2\n\n${two}\n\n**Your pick (1 / 2 / tie):** \n\n---\n`;
     })

@@ -34,7 +34,8 @@ SQLite via Drizzle. No auth, hosting or job queue.
   With a fallback, per-attempt `usage.iterations` is used for cost.
 - **Eval baseline:** the single answer uses Opus 5.5 at `high` effort, the same brief, the same
   Verdict/Why/Risks layout and about 800 words, to keep the blind comparison fair. The chairman's
-  "Chosen answer:" line is stripped from the blind file. A minority report can still give the council away.
+  "Chosen answer:" line and the minority report are stripped from the blind file (both give the council away);
+  the full verdict stays in `sessions.json` and the database.
 - **SQLite driver:** Node's built-in `node:sqlite` (Node 22.13+) through Drizzle's sqlite-proxy driver.
   `better-sqlite3` crashed on Windows (access violation on open), and the built-in module has no native addon
   to compile. Node prints an "ExperimentalWarning: SQLite" line; it is harmless.

@@ -24,6 +24,16 @@ export function stripChairmanPreamble(verdict: string): string {
   return verdict.replace(/^\s*(\*\*)?Chosen answer:.*\n+/i, "").trim();
 }
 
+/**
+ * Prepares a verdict for the blind comparison: drops the "Chosen answer" line and the minority report, both of
+ * which give away that the response came from a council. The full verdict stays in sessions.json and the database.
+ */
+export function blindVerdict(verdict: string): string {
+  return stripChairmanPreamble(verdict)
+    .replace(/\n#{1,6}\s*Minority report[\s\S]*$/i, "")
+    .trim();
+}
+
 /** `--only` takes a 1-based question number or a (case-insensitive) title. */
 export function selectQuestions(questions: Question[], only?: string): Question[] {
   if (!only) return questions;
