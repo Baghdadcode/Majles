@@ -60,9 +60,10 @@ SQLite via Drizzle. No auth, hosting or job queue.
 - [x] `questions.example.md` (5 questions)
 - [x] Unit tests: Borda, anonymization, close race, cost, schemas, orchestrator (fake provider), provider (mocked client), DB
 - [x] Opt-in live smoke test: `npm run test:live`
-- [ ] **Gate — needs you:** run the eval on your real 30 questions with your key, then judge `blind-comparison.md`.
-      Not built until the council clearly wins. I have not been able to run anything against the real API yet
-      (no key in the build environment).
+- [x] First real run (1 question, "Match length"): council preferred in the blind comparison; $0.66 per question
+      (council $0.59, single $0.07); all five seats reached the same verdict, Pragmatist won unanimously.
+- [x] **Gate:** skipped by your decision (2026-10-04) to avoid spending on the full 30-question eval. Judge the council
+      through real use in Phase 1 instead. `npm run council:eval` stays available, e.g. `--limit 10` (~$6.50).
 
 ## Phase 1 — MVP dashboard (not started)
 
