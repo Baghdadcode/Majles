@@ -12,7 +12,6 @@ export type CouncilDb = ReturnType<typeof openDb>;
 export function openDb(path: string = getDbPath()) {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const sqlite = new Database(path);
-  sqlite.pragma("journal_mode = WAL");
   const db = drizzle(sqlite, { schema });
   migrate(db, { migrationsFolder: "./drizzle" });
   return db;
