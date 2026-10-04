@@ -8,7 +8,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:live": "LIVE=1 vitest run tests/live.test.ts",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

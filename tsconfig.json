@@ -12,5 +12,5 @@
     "isolatedModules": true,
     "types": ["node"]
   },
-  "include": ["src", "tests", "drizzle.config.ts", "vitest.config.ts", "eslint.config.js"]
+  "include": ["src", "tests", "drizzle.config.ts", "vitest.config.ts", "vitest.live.config.ts", "eslint.config.js"]
 }
