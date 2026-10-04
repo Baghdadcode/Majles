@@ -8,25 +8,27 @@ import type { SessionResult } from "../core/orchestrator";
 import type { CouncilDef, SeatDef, SessionBrief } from "../core/types";
 
 /** Inserts seat versions and the built-in councils if they are not stored yet. */
-export function seedDefaults(db: CouncilDb): void {
-  for (const seat of [...ALL_SEATS, CHAIRMAN]) saveSeat(db, seat);
+export async function seedDefaults(db: CouncilDb): Promise<void> {
+  for (const seat of [...ALL_SEATS, CHAIRMAN]) await saveSeat(db, seat);
   for (const council of COUNCILS) {
-    db.insert(t.councils)
+    await db
+      .insert(t.councils)
       .values({ id: council.id, name: council.name, isDefault: council.isDefault })
       .onConflictDoNothing()
       .run();
-    council.seats.forEach((seat, position) =>
-      db
+    for (const [position, seat] of council.seats.entries()) {
+      await db
         .insert(t.councilSeats)
         .values({ councilId: council.id, advisorId: seat.id, advisorVersion: seat.version, position })
         .onConflictDoNothing()
-        .run(),
-    );
+        .run();
+    }
   }
 }
 
-export function saveSeat(db: CouncilDb, seat: SeatDef): void {
-  db.insert(t.advisors)
+export async function saveSeat(db: CouncilDb, seat: SeatDef): Promise<void> {
+  await db
+    .insert(t.advisors)
     .values({
       id: seat.id,
       version: seat.version,
@@ -42,29 +44,33 @@ export function saveSeat(db: CouncilDb, seat: SeatDef): void {
     .run();
 }
 
-export function upsertBrief(db: CouncilDb, brief: { id: string; name: string; content: string }): SessionBrief {
+export async function upsertBrief(
+  db: CouncilDb,
+  brief: { id: string; name: string; content: string },
+): Promise<SessionBrief> {
   const updatedAt = new Date();
-  const existing = db.select().from(t.briefs).where(eq(t.briefs.id, brief.id)).get();
+  const existing = await db.select().from(t.briefs).where(eq(t.briefs.id, brief.id)).get();
   if (existing && existing.content === brief.content) {
     return { id: existing.id, name: existing.name, content: existing.content, updatedAt: existing.updatedAt };
   }
-  db.insert(t.briefs)
+  await db
+    .insert(t.briefs)
     .values({ ...brief, updatedAt })
     .onConflictDoUpdate({ target: t.briefs.id, set: { name: brief.name, content: brief.content, updatedAt } })
     .run();
   return { ...brief, updatedAt };
 }
 
-export function saveSession(
+export async function saveSession(
   db: CouncilDb,
   args: { question: string; council: CouncilDef; brief?: SessionBrief; result: SessionResult; createdAt: Date },
-): string {
+): Promise<string> {
   const { question, council, brief, result } = args;
   const sessionId = randomUUID();
   const answerRowId = new Map<string, string>(result.answers.map((a) => [a.answerId, `${sessionId}:${a.answerId}`]));
 
-  db.transaction((tx) => {
-    tx.insert(t.sessions)
+  await db.transaction(async (tx) => {
+    await tx.insert(t.sessions)
       .values({
         id: sessionId,
         question,
@@ -88,13 +94,13 @@ export function saveSession(
     for (const a of result.answers) {
       const seat = council.seats.find((s) => s.id === a.seatId)!;
       const id = answerRowId.get(a.answerId)!;
-      tx.insert(t.answers)
+      await tx.insert(t.answers)
         .values({ id, sessionId, advisorId: seat.id, advisorVersion: seat.version, text: a.text, status: "ok" })
         .run();
     }
     for (const f of result.failedSeats.filter((x) => x.stage === "answer")) {
       const seat = council.seats.find((s) => s.id === f.seatId)!;
-      tx.insert(t.answers)
+      await tx.insert(t.answers)
         .values({
           id: `${sessionId}:failed-${f.seatId}`,
           sessionId,
@@ -108,7 +114,7 @@ export function saveSession(
     for (const r of result.rankings) {
       const n = r.items.length;
       for (const i of r.items) {
-        tx.insert(t.rankings)
+        await tx.insert(t.rankings)
           .values({
             sessionId,
             reviewerAdvisorId: r.reviewerId,
@@ -126,18 +132,18 @@ export function saveSession(
       }
     }
     if (result.verdict) {
-      tx.insert(t.verdicts)
+      await tx.insert(t.verdicts)
         .values({ sessionId, text: result.verdict, chairmanAdvisorId: CHAIRMAN.id, mode: result.effectiveMode })
         .run();
     }
-    for (const u of result.usage) tx.insert(t.usage).values({ sessionId, ...u }).run();
+    for (const u of result.usage) await tx.insert(t.usage).values({ sessionId, ...u }).run();
   });
   return sessionId;
 }
 
 /** Wins per seat across all stored sessions (feeds the Phase 4 track record). */
-export function seatWins(db: CouncilDb): Record<string, number> {
-  const rows = db
+export async function seatWins(db: CouncilDb): Promise<Record<string, number>> {
+  const rows = await db
     .select({ id: t.sessions.winnerAnswerId })
     .from(t.sessions)
     .where(and(eq(t.sessions.state, "done")))

@@ -124,11 +124,11 @@ async function main() {
     baseline = (question, seat, b) => claude.baseline(question, seat, b);
   }
   step(`Opening database ${getDbPath()}`);
-  const db = openDb();
-  seedDefaults(db);
+  const db = await openDb();
+  await seedDefaults(db);
 
   const brief = args.briefPath
-    ? upsertBrief(db, {
+    ? await upsertBrief(db, {
         id: basename(args.briefPath, extname(args.briefPath)),
         name: basename(args.briefPath, extname(args.briefPath)),
         content: readFileSync(args.briefPath, "utf8"),
@@ -160,7 +160,7 @@ async function main() {
       ),
       baseline(q.text, baselineSeat, brief?.content),
     ]);
-    const sessionId = saveSession(db, { question: q.text, council, brief, result: session, createdAt });
+    const sessionId = await saveSession(db, { question: q.text, council, brief, result: session, createdAt });
     const baselineCost = sumCost(base.usage);
     const councilIsResponse = (randomInt(2) + 1) as 1 | 2;
     rows.push({ title: q.title, session, baseline: base.value, baselineCost, sessionId, councilIsResponse });
@@ -196,7 +196,7 @@ async function main() {
   const totalCouncil = rows.reduce((s, r) => s + r.session.totalCostUsd, 0);
   const totalBaseline = rows.reduce((s, r) => s + r.baselineCost, 0);
   const cacheReads = rows.reduce((s, r) => s + r.session.usage.reduce((a, u) => a + u.cacheReadTokens, 0), 0);
-  const wins = seatWins(db);
+  const wins = await seatWins(db);
   const summary = [
     `# Council eval summary (${stamp})`,
     "",
