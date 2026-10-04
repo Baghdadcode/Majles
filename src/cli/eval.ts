@@ -10,7 +10,7 @@ import { ClaudeProvider, checkApiKey } from "../providers/claude";
 import { getCouncil } from "../seats/councils";
 import { CHAIRMAN } from "../seats/definitions";
 import type { SeatDef, VotingMode } from "../core/types";
-import { parseQuestions, stripChairmanPreamble } from "./questions";
+import { parseQuestions, selectQuestions, stripChairmanPreamble } from "./questions";
 import { loadEnv } from "../config/env";
 
 interface Args {
@@ -20,6 +20,7 @@ interface Args {
   briefPath?: string;
   out: string;
   limit?: number;
+  only?: string;
   dryRun: boolean;
 }
 
@@ -33,6 +34,7 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--brief") args.briefPath = rest.shift()!;
     else if (a === "--out") args.out = rest.shift()!;
     else if (a === "--limit") args.limit = Number(rest.shift());
+    else if (a === "--only") args.only = rest.shift()!;
     else if (a === "--dry-run") args.dryRun = true;
     else if (!a.startsWith("--")) args.file = a;
     else throw new Error(`Unknown option ${a}`);
@@ -55,7 +57,7 @@ function estimateCost(questions: number, seats: number, mode: VotingMode): numbe
 async function main() {
   loadEnv();
   const args = parseArgs(process.argv.slice(2));
-  const questions = parseQuestions(readFileSync(args.file, "utf8")).slice(0, args.limit);
+  const questions = selectQuestions(parseQuestions(readFileSync(args.file, "utf8")), args.only).slice(0, args.limit);
   if (questions.length === 0) throw new Error(`No questions found in ${args.file}. Use "## Title" headings.`);
   const council = getCouncil(args.council);
 

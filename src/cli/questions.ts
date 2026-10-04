@@ -23,3 +23,16 @@ export function parseQuestions(markdown: string): Question[] {
 export function stripChairmanPreamble(verdict: string): string {
   return verdict.replace(/^\s*(\*\*)?Chosen answer:.*\n+/i, "").trim();
 }
+
+/** `--only` takes a 1-based question number or a (case-insensitive) title. */
+export function selectQuestions(questions: Question[], only?: string): Question[] {
+  if (!only) return questions;
+  const n = Number(only);
+  const picked = Number.isInteger(n) && n > 0
+    ? questions.slice(n - 1, n)
+    : questions.filter((q) => q.title.trim().toLowerCase() === only.trim().toLowerCase());
+  if (picked.length === 0) {
+    throw new Error(`No question matches --only "${only}". Titles: ${questions.map((q, i) => `${i + 1}. ${q.title}`).join("; ")}`);
+  }
+  return picked;
+}
