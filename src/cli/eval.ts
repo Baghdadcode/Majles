@@ -53,15 +53,23 @@ function parseArgs(argv: string[]): Args {
   return args;
 }
 
-/** Rough pre-run estimate (documented as an estimate: tokens per call are typical, not measured). */
-function estimateCost(questions: number, seats: number, mode: VotingMode): number {
+/**
+ * Rough pre-run estimate: typical tokens per call, not measured. The brief (about 4 characters per token) is
+ * priced as a cache write on the parallel answer and baseline calls and as a cache read on the later calls.
+ * Includes the single-answer baseline.
+ */
+function estimateCost(questions: number, seats: number, mode: VotingMode, briefChars = 0): number {
   const p = PRICING["claude-opus-5-5"];
   const call = (inTok: number, outTok: number) => (inTok * p.inputPerMTok + outTok * p.outputPerMTok) / 1e6;
+  const briefTok = Math.ceil(briefChars / 4);
+  const firstWave = seats + 1; // answers + baseline, sent together
+  const laterCalls = (mode === "full" ? seats : 0) + 1; // rankings + chairman
+  const brief = (briefTok * (firstWave * p.cacheWritePerMTok + laterCalls * p.cacheReadPerMTok)) / 1e6;
   const answers = seats * call(1_500, 4_000);
   const ranks = mode === "full" ? seats * call(5_000, 3_000) : 0;
   const chair = call(mode === "full" ? 9_000 : 6_000, 6_000);
   const baseline = call(1_000, 4_000);
-  return questions * (answers + ranks + chair + baseline);
+  return questions * (answers + ranks + chair + baseline + brief);
 }
 
 async function main() {
@@ -72,8 +80,11 @@ async function main() {
   const council = getCouncil(args.council);
 
   console.log(`Council "${council.name}" (${council.seats.map((s) => s.name).join(", ")}), mode: ${args.mode}`);
+  const briefChars = args.briefPath ? readFileSync(args.briefPath, "utf8").length : 0;
+  const estimate = estimateCost(questions.length, council.seats.length, args.mode, briefChars);
   console.log(
-    `${questions.length} question(s). Rough estimate: ${formatUsd(estimateCost(questions.length, council.seats.length, args.mode))} (plus one baseline answer each).`,
+    `${questions.length} question(s). Rough estimate: ${formatUsd(estimate)} including the single-answer baseline` +
+      (args.briefPath ? ` and the brief (~${Math.ceil(briefChars / 4)} tokens per call).` : "."),
   );
   if (args.dryRun) return;
 
