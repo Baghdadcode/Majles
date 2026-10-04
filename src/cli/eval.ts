@@ -123,8 +123,10 @@ async function main() {
     provider = claude;
     baseline = (question, seat, b) => claude.baseline(question, seat, b);
   }
-  step(`Opening database ${getDbPath()}`);
-  const db = await openDb();
+  // Fake runs go to their own database and folder so they never mix with real results.
+  const dbPath = fake && !process.env.COUNCIL_DB_PATH ? "./data/council-fake.db" : getDbPath();
+  step(`Opening database ${dbPath}`);
+  const db = await openDb(dbPath);
   await seedDefaults(db);
 
   const brief = args.briefPath
@@ -138,7 +140,7 @@ async function main() {
 
   const baselineSeat: SeatDef = { ...CHAIRMAN, id: "single", name: "Single", effort: "high" };
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const outDir = join(args.out, stamp);
+  const outDir = join(args.out, fake ? `fake-${stamp}` : stamp);
   mkdirSync(outDir, { recursive: true });
 
   const rows: {
