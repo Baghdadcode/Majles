@@ -27,6 +27,7 @@ interface Args {
 function parseArgs(argv: string[]): Args {
   const args: Args = { file: "questions.md", council: "game-dev", mode: "full", out: "eval-out", dryRun: false };
   const rest = [...argv];
+  let positional = 0;
   while (rest.length) {
     const a = rest.shift()!;
     if (a === "--council") args.council = rest.shift()!;
@@ -36,7 +37,16 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--limit") args.limit = Number(rest.shift());
     else if (a === "--only") args.only = rest.shift()!;
     else if (a === "--dry-run") args.dryRun = true;
-    else if (!a.startsWith("--")) args.file = a;
+    else if (!a.startsWith("--")) {
+      // A second positional usually means the shell or npm swallowed the "--" and our flags with it.
+      if (positional++ > 0) {
+        throw new Error(
+          `Unexpected argument "${a}". Options like --only/--brief were probably eaten by npm. ` +
+            `In PowerShell, quote the separator: npm run council:eval '--' questions.md --only "..."`,
+        );
+      }
+      args.file = a;
+    }
     else throw new Error(`Unknown option ${a}`);
   }
   if (args.mode !== "full" && args.mode !== "chairman") throw new Error('--mode must be "full" or "chairman"');
