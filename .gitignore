@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env
+.env.local
+.env.*.local
+data/*.db
+data/*.db-*
+eval-out/
+questions.md
+*.log
+coverage/
