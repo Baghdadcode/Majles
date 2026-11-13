@@ -25,8 +25,12 @@ Files next to this one:
 | `standard` | 5 roles answer, one panel ranks them blind once per role lens, Borda count, verdict | 7 | everything else (default) |
 | `full` | 5 roles answer, each role ranks the others blind separately, Borda count, verdict | 11 | big decisions that are hard to undo |
 
-The user picks a mode by saying it ("quick", "full", "snabbt", "fullt råd"). If they don't, you
-propose one in step 1.
+The user picks a mode by saying it, anywhere in the request or later ("/majles quick ...",
+"kör Majles quick", "snabbt", "full", "fullt råd"). If they don't, you propose one in step 1.
+
+If the user started Majles without a question (e.g. just "kör Majles quick"), ask for the question in
+one short line and keep the mode they chose. If the conversation just discussed an idea, offer that
+idea as the question instead of asking from scratch.
 
 ## Step 1: Set up the council
 
