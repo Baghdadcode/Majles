@@ -90,6 +90,26 @@ Phase 1 defaults:
   `data/council-fake.db`, for trying the UI without spending anything.
 - **SSE over a GET endpoint** that replays the run so far, so a refresh mid-run picks up where it was.
 
+## Skill track — Majles in Claude Code (branch `claude/charming-mendel-5tt6q0`)
+
+- [x] `.claude/skills/majles/` with SKILL.md, 14-role pool in four groups, councils (product-idea,
+      game-dev, general, code-review), prompt templates, and `council.mjs` (blind labels + Borda tally)
+- [x] Chairman picks 5 roles per question (≥ 1 test role, ≤ 2 per group, Player Experience xor User Advocate),
+      shows them with clarifying questions, waits for "go"
+- [x] Three modes: quick (4 subagents), standard with one blind panel review (7), full (11)
+- [x] Agent types: `majles-seat`, `majles-reviewer` (Sonnet), `majles-chairman` (Opus)
+- [ ] **Gate — needs you:** a week of real use. Note when you swap a role, and compare standard vs. full on 3–4 questions
+- [ ] Next: `roles.local.yaml` for your own roles and councils; rebuttal round on close races
+- [ ] Later: package as a plugin; the app reads the same `roles.yaml`
+
+Skill defaults:
+- **One label set per run.** The app relabels answers per reviewer; the skill keeps one A–E set and shuffles the
+  order per reviewer instead, which keeps the orchestration simple. Reviewers still never see role names.
+- **Panel review drops self-votes in the tally.** In standard mode one reviewer ranks all answers per role lens;
+  `council.mjs tally` removes each lens's own answer before counting, matching the app's no-self-ranking rule.
+- **code-review council uses Tester, not Skeptic,** to respect "at most two roles per group".
+- **Per-role effort is not used.** Subagent effort is set per agent type, not per call.
+
 ## Phase 2 — custom councils (not started)
 
 - [ ] Seat editor with templates and versioning; per-seat model and effort; saved councils
