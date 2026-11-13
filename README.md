@@ -27,4 +27,17 @@ server side and is never sent to the browser. The database is created automatica
 | `npm run test:e2e` | Browser tests in fake mode |
 | `npm run test:live` | One real-API smoke test (costs about $1) |
 
+## Majles skill for Claude Code
+
+The same council idea also runs inside Claude Code, with no API key: subagents answer instead of API calls.
+Open Claude Code in this repository and ask, for example, "kör ett Majles-råd om min app-idé" or
+"Majles full: should I rewrite the backend?".
+
+- The chairman picks 5 of 14 roles for the question (or use a ready-made council), shows them, and waits for "go".
+- Modes: `quick` (3 roles, 4 subagents), `standard` (default, 7), `full` (11, like the app).
+- Answers and reviews run on Sonnet, the verdict on Opus.
+
+Files: `.claude/skills/majles/` (the skill, roles, councils, prompts, tally script) and `.claude/agents/majles-*.md`.
+To use it in every project, copy both into `~/.claude/skills/majles/` and `~/.claude/agents/`.
+
 See `ROADMAP.md` for the phases, what is done, and the defaults chosen along the way.

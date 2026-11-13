@@ -1,0 +1,28 @@
+# Ready-made councils: shortcuts that skip the chairman's role selection.
+# Ask for one by id or name ("run the code-review council", "Majles game-dev").
+# Standard and full mode take exactly 5 roles; quick mode uses the first 3 in the list,
+# so put the three most important roles first.
+
+councils:
+  - id: product-idea
+    name: Product Idea
+    description: Bounce an idea for an app, website or service.
+    roles: [user-advocate, market-business, skeptic, pragmatist, lateral-thinker]
+
+  - id: game-dev
+    name: Game Dev
+    description: Design and balance questions for a game (same seats as the Council app's default).
+    roles: [player-experience, skeptic, pragmatist, empiricist, systems-thinker]
+
+  - id: general
+    name: General
+    description: Any decision that is not specifically about software (same seats as the app's General council).
+    roles: [first-principles, skeptic, pragmatist, empiricist, systems-thinker]
+
+  - id: code-review
+    name: Code Review
+    description: Review code, an architecture or a pull request in the current repository.
+    # Tester stands in for the Skeptic here: at most two roles per group, and both test seats
+    # are more concrete for code. Swap tester for skeptic when reviewing a design, not code.
+    roles: [architect, security-privacy, tester, pragmatist, long-horizon]
+    readsCode: true

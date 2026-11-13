@@ -12,4 +12,8 @@ export default tseslint.config(
     rules: reactHooks.configs.recommended.rules,
   },
   { rules: { "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }] } },
+  {
+    files: [".claude/**/*.mjs"],
+    languageOptions: { globals: { process: "readonly", console: "readonly" } },
+  },
 );
