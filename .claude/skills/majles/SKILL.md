@@ -106,9 +106,11 @@ plainly.
 ## Subagents
 
 The agent types live in `.claude/agents/`: `majles-seat` and `majles-reviewer` run on Sonnet and
-`majles-chairman` on Opus. If a type is missing (for example the skill was copied without them), use
-`general-purpose` with the Agent tool's `model` parameter instead: `sonnet` for answers and reviews,
-`opus` for the verdict.
+`majles-chairman` on Opus. When Majles is installed as a plugin they are named `majles:majles-seat`,
+`majles:majles-reviewer` and `majles:majles-chairman`; use whichever form is in your list of agent
+types. If neither is there (for example the skill was copied without them), use `general-purpose`
+with the Agent tool's `model` parameter instead: `sonnet` for answers and reviews, `opus` for the
+verdict.
 
 Only the councils marked `readsCode: true`, or questions that name files in this repository, should
 let roles read files. In every other case the Answer prompt tells them not to use tools.

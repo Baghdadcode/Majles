@@ -100,7 +100,10 @@ Phase 1 defaults:
 - [x] Agent types: `majles-seat`, `majles-reviewer` (Sonnet), `majles-chairman` (Opus)
 - [ ] **Gate — needs you:** a week of real use. Note when you swap a role, and compare standard vs. full on 3–4 questions
 - [ ] Next: `roles.local.yaml` for your own roles and councils; rebuttal round on close races
-- [ ] Later: package as a plugin; the app reads the same `roles.yaml`
+- [x] Plugin: the repo is its own marketplace (`.claude-plugin/`), the plugin points at the files in `.claude/`,
+      no `version` field so every commit is an update
+- [ ] Cloud sessions: setup script that installs the plugin (after this branch is merged to the default branch)
+- [ ] Later: the app reads the same `roles.yaml`
 
 Skill defaults:
 - **One label set per run.** The app relabels answers per reviewer; the skill keeps one A–E set and shuffles the

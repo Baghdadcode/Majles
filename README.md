@@ -38,6 +38,23 @@ Open Claude Code in this repository and ask, for example, "kör ett Majles-råd 
 - Answers and reviews run on Sonnet, the verdict on Opus.
 
 Files: `.claude/skills/majles/` (the skill, roles, councils, prompts, tally script) and `.claude/agents/majles-*.md`.
-To use it in every project, copy both into `~/.claude/skills/majles/` and `~/.claude/agents/`.
+
+### Install as a plugin (every project)
+
+This repository is also a plugin marketplace. In Claude Code, run:
+
+```
+/plugin marketplace add Baghdadcode/Majles
+/plugin install majles@majles
+```
+
+Then start Majles with `/majles:majles quick <question>`, or just ask for "Majles" in plain words.
+
+**Updates:** turn on auto-update once (`/plugin` → Marketplaces → majles → Enable auto-update). The plugin has
+no `version` field, so every commit on the default branch counts as a new version; Claude Code picks it up in
+the background and it applies from the next session (or `/reload-plugins`). To update by hand:
+`/plugin marketplace update majles`.
+
+Check the manifests with `claude plugin validate .`.
 
 See `ROADMAP.md` for the phases, what is done, and the defaults chosen along the way.
