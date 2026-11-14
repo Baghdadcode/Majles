@@ -55,6 +55,7 @@ no `version` field, so every commit on the default branch counts as a new versio
 the background and it applies from the next session (or `/reload-plugins`). To update by hand:
 `/plugin marketplace update majles`.
 
-Check the manifests with `claude plugin validate .`.
+The plugin root is `.claude/` (its manifest is `.claude/.claude-plugin/plugin.json`), so the install holds only the
+skill and agents, not the web app. Check the manifests with `claude plugin validate .`.
 
 See `ROADMAP.md` for the phases, what is done, and the defaults chosen along the way.

@@ -1,15 +1,17 @@
 {
   "name": "majles",
   "description": "Majles: a council of AI advisors. The chairman picks the right roles for your question, they answer independently, rank each other blind, and the chairman writes the verdict. Modes: quick, standard, full.",
-  "author": { "name": "Baghdadcode" },
+  "author": {
+    "name": "Baghdadcode"
+  },
   "homepage": "https://github.com/Baghdadcode/Majles",
   "repository": "https://github.com/Baghdadcode/Majles",
   "license": "UNLICENSED",
-  "keywords": ["council", "advisors", "decision", "review", "brainstorm"],
-  "skills": ["./.claude/skills/"],
-  "agents": [
-    "./.claude/agents/majles-seat.md",
-    "./.claude/agents/majles-reviewer.md",
-    "./.claude/agents/majles-chairman.md"
+  "keywords": [
+    "council",
+    "advisors",
+    "decision",
+    "review",
+    "brainstorm"
   ]
 }

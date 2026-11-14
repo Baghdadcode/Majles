@@ -1,11 +1,13 @@
 {
   "name": "majles",
-  "owner": { "name": "Baghdadcode" },
+  "owner": {
+    "name": "Baghdadcode"
+  },
   "description": "The Majles council for Claude Code.",
   "plugins": [
     {
       "name": "majles",
-      "source": ".",
+      "source": "./.claude",
       "description": "A council of AI advisors: the chairman picks the roles, they answer independently, rank each other blind, and the chairman writes the verdict."
     }
   ]
